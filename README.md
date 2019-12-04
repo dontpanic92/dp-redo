@@ -1,6 +1,6 @@
 # dp-redo
 
-A python variant of the idea of [redo](http://cr.yp.to/redo.html) build system, with which You Can (Not) Redo.
+A python variant of the [redo](http://cr.yp.to/redo.html) build system, with which You Can (Not) Redo.
 
 ## Example
 
@@ -13,14 +13,14 @@ source_tree = os.path.dirname(os.path.abspath(sys.argv[0]))
 def test():
     source = os.path.join(source_tree, "test.c")
 
-    # A simplest compiler 😁
+    # The simplest compiler 😁
     os.system("cat {} > {}".format(source, "test.o"))
 
 if __name__ == "__main__":
     test()
 ```
 
-The `test` will be run every time, no matter whether `test.c` gets an update or not, which wastes much time. Now let's add some magic:
+`test` will be run every time no matter whether `test.c` gets an update or not, which wastes much time. Now let's add some magic:
 
 ```python
 from dp_redo import *
@@ -47,7 +47,7 @@ PS C:\Users\lishengq\source\repos\dp-redo\build> python ..\test2.py
 Skipping target test: it's up to date.
 ```
 
-Fantastic, isn't it? If you changed `test.c`, or the `test` method itself, or deleted `test,o`, `test` will be executed again:
+Fantastic, isn't it? If you changed `test.c`, modified the `test` method itself, or deleted `test.o`, `test` will be executed again:
 
 ```
 PS C:\Users\lishengq\source\repos\dp-redo\build> python ..\test2.py
