@@ -59,7 +59,7 @@ Redoing target: test. Reason: The test.c has been modified
 PS C:\Users\lishengq\source\repos\dp-redo\build> 
 ```
 
-A target method can also depends on another method, which is rather simple:
+A target method can also depend on another method, which is rather simple:
 
 ```python
 from dp_redo import *
