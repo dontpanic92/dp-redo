@@ -55,7 +55,7 @@ Redoing target: test. Reason: It's python code has changed
 PS C:\Users\lishengq\source\repos\dp-redo\build> python ..\test2.py
 Redoing target: test. Reason: The target file doesn't exist
 PS C:\Users\lishengq\source\repos\dp-redo\build> python ..\test2.py
-Redoing target: test. Reason: The test.c has been modified
+Redoing target: test. Reason: test.c has been modified
 PS C:\Users\lishengq\source\repos\dp-redo\build> 
 ```
 

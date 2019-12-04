@@ -73,7 +73,7 @@ class Target():
                 if not os.path.exists(targets[dep].__output_path) or \
                     abs(self.__info["target_deps"][dep] - os.path.getmtime(targets[dep].__output_path)) > 0.001:
                     need_redo = True
-                    redo_reason = "The {} has been modified".format(dep)
+                    redo_reason = "{} has been modified".format(dep)
                     break
 
                 need_redo = targets[dep].redo_ifchange() or need_redo
