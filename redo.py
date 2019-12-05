@@ -1,5 +1,5 @@
 from dp_redo import *
-import os, sys
+import os, sys, re
 
 source_tree = os.path.dirname(os.path.abspath(sys.argv[0]))
 
@@ -10,9 +10,12 @@ def test2(target_name, target_base_name, output_path):
 
 @do("test.o")
 def test(target_name, target_base_name, output_path):
-    redo_ifchange(test2, "test.c")
+    redo_ifchange(test2)
     source = os.path.join(source_tree, "test.c")
-    os.system("cat {} > {}".format(source, output_path))
+    os.system("gcc -M -MF test.c.dep -o {} {}".format(output_path, source))
+
+    deps = open('test.c.dep', 'r').read().split(": ")[1].strip().split("\\\n")
+    redo_ifchange(*deps)
 
 if __name__ == "__main__":
     redo_ifchange(test)

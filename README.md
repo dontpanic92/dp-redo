@@ -59,6 +59,8 @@ Redoing target: test. Reason: test.c has been modified
 PS C:\Users\lishengq\source\repos\dp-redo\build> 
 ```
 
+---
+
 A target method can also depend on another method, which is rather simple:
 
 ```python
@@ -80,3 +82,34 @@ def test(target_name, target_base_name, output_path):
 if __name__ == "__main__":
     redo_ifchange(test)
 ```
+
+---
+
+What makes redo more interesting is that, you can call `redo_ifchange` to add dependencies at any time, even after your compilation:
+
+```python
+from dp_redo import *
+import os, sys, re
+
+source_tree = os.path.dirname(os.path.abspath(sys.argv[0]))
+
+@do("test2.o")
+def test2(target_name, target_base_name, output_path):
+    print("In test2")
+    os.system("echo test2 > " + output_path)
+
+@do("test.o")
+def test(target_name, target_base_name, output_path):
+    redo_ifchange(test2)
+    source = os.path.join(source_tree, "test.c")
+    os.system("gcc -M -MF test.c.dep -o {} {}".format(output_path, source))
+
+    # Dependent headers given by gcc
+    deps = open('test.c.dep', 'r').read().split(": ")[1].strip().split("\\\n")
+    redo_ifchange(*deps)
+
+if __name__ == "__main__":
+    redo_ifchange(test)
+```
+
+Now when any headers are changed, the build process will be run again.

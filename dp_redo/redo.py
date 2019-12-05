@@ -36,7 +36,8 @@ class Target():
         self.__updated_target_deps.append(dep)
 
     def add_source_dep(self, dep):
-        if not os.path.exists(os.path.join(source_tree, dep)):
+        dep = os.path.join(source_tree, dep.strip())
+        if not os.path.exists(dep):
             logger.error("Cannot find source file: %s", dep)
             exit(1)
 
