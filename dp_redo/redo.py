@@ -15,12 +15,21 @@ build_tree = os.getcwd()
 redo_data_dir = os.path.join(build_tree, REDO_DATA_DIR_NAME)
 redo_data_path = os.path.join(redo_data_dir, REDO_DATA_FILE_NAME)
 
+exit_code = 1
+sys_exit = sys.exit
+
+def new_exit(code):
+    global exit_code
+    exit_code = code
+    sys_exit()
+
+sys.exit = new_exit
+
 class Target():
     def __init__(self, func, output_name, last_info):
         self.name = func.__name__
         self.__func = func
-        self.__output_name = output_name
-        self.__output_path = os.path.join(build_tree, output_name)
+        self.output_name = output_name
         self.__info = last_info
         self.digest = self.__digest(func)
         self.__updated_target_deps = []
@@ -43,16 +52,17 @@ class Target():
 
         self.__updated_source_deps.append(dep)
 
-    def redo_ifchange(self):
+    def redo_ifchange(self, target_name, target_base_name):
         need_redo = False
         redo_reason = ""
+        output_path =  os.path.join(build_tree, target_name)
         if "digest" not in self.__info or self.__info["digest"] != self.digest:
             need_redo = True
             self.__info["digest"] = self.digest
             redo_reason = "It's python code has changed"
 
         if need_redo == False:
-            if not os.path.exists(self.__output_path):
+            if not os.path.exists(output_path):
                 need_redo = True
                 redo_reason = "The target file doesn't exist"
 
@@ -62,27 +72,25 @@ class Target():
                 if not os.path.exists(dep_path) or \
                     abs(self.__info["source_deps"][dep] - os.path.getmtime(dep_path)) > 0.001:
                         need_redo = True
-                        redo_reason = "The {} has been modified".format(dep)
+                        redo_reason = "Source {} has been modified".format(dep)
                         break
         
         if need_redo == False:
             for dep in self.__info["target_deps"]:
-                if dep not in targets:
+                target_path = os.path.join(build_tree, dep)
+                if not os.path.exists(target_path) or \
+                    abs(self.__info["target_deps"][dep] - os.path.getmtime(target_path)) > 0.001:
                     need_redo = True
+                    redo_reason = "Target {} has been modified".format(dep)
                     break
 
-                if not os.path.exists(targets[dep].__output_path) or \
-                    abs(self.__info["target_deps"][dep] - os.path.getmtime(targets[dep].__output_path)) > 0.001:
-                    need_redo = True
-                    redo_reason = "{} has been modified".format(dep)
-                    break
-
-                need_redo = targets[dep].redo_ifchange() or need_redo
+                need_redo = find_target_by_output_name(dep).redo_ifchange(target_name, target_base_name) or need_redo
         
-        redoing_tmp_name = self.__output_path + "---redoing"
+        redoing_tmp_name = output_path + "---redoing"
+        print(redoing_tmp_name)
         if need_redo:
             logger.info("Redoing target: %s. Reason: %s", self.name, redo_reason)
-            self.__func(self.__output_name, os.path.basename(self.__output_name), redoing_tmp_name)
+            self.__func(target_name, target_base_name, redoing_tmp_name)
             
             self.__info["source_deps"] = {}
             for source_dep in self.__updated_source_deps:
@@ -90,10 +98,10 @@ class Target():
             
             self.__info["target_deps"] = {}
             for target_dep in self.__updated_target_deps:
-                self.__info["target_deps"][target_dep.name] = os.path.getmtime(target_dep.__output_path)
+                self.__info["target_deps"][target_dep] = os.path.getmtime(os.path.join(build_tree, target_dep))
 
             if os.path.exists(redoing_tmp_name):
-                shutil.move(redoing_tmp_name, self.__output_path)
+                shutil.move(redoing_tmp_name, output_path)
             else:
                 logger.warning("%s didn't generate any target file.", self.name)
         else:
@@ -129,25 +137,51 @@ def redo_ifchange(*deps):
     caller = inspect.stack()[1].function
     for dep in deps:
         if isinstance(dep, str):
-            source_dep(caller, dep)
+            dep = dep.strip()
+            source_file = os.path.join(source_tree, dep)
+            if os.path.exists(source_file):
+                source_dep(caller, dep)
+            else:
+                target = find_target_by_output_name(dep)
+                if target == None:
+                    logger.error("Cannot find target %s", dep)
+                    exit(1)
+
+                target_dep(caller, target, dep)
         else:
-            target_dep(caller, dep)
+            if dep.__name__ not in targets:
+                logger.error("redo_ifchange must be applied to a target. Invalid function: %s", dep.__name__)
+                exit(1)
+            
+            target_dep(caller, targets[dep.__name__], targets[dep.__name__].output_name)
 
 def source_dep(caller, dep_name):
     if caller != "<module>":
         targets[caller].add_source_dep(dep_name)
 
-def target_dep(caller, dep):
-    if dep.__name__ not in targets:
-        logger.error("redo_ifchange must be applied to a target. Invalid function: %s", dep.__name__)
-        exit(1)
-
+def target_dep(caller, target, target_name):
     if caller != "<module>":
-        targets[caller].add_target_dep(targets[dep.__name__])
+        targets[caller].add_target_dep(target_name)
 
-    targets[dep.__name__].redo_ifchange()
+    target_base_name, _ = os.path.splitext(target_name)
+    target.redo_ifchange(target_name, target_base_name)
+
+def find_target_by_output_name(output_name):
+    # If the file is not found in the source tree, treat it as a target
+    for name in targets:
+        if targets[name].output_name == output_name:
+            return targets[name]
+    
+    # Search the defaults
+    _, ext = os.path.splitext(output_name)
+    for name in targets:
+        if targets[name].output_name == ext:
+            return targets[name]
 
 def flush_info():
+    if exit_code != 0:
+        return
+
     if not os.path.exists(redo_data_dir):
         os.mkdir(redo_data_dir)
 
@@ -165,10 +199,3 @@ def load_info():
 
 load_info()
 atexit.register(flush_info)
-    #if caller not in targets:
-    #    targets[caller] = Target(func, None)
-    
-    #if dep not in targets:
-    #    targets[dep.__name__] = Target()
-
-    #caller.add_dep_target(target)

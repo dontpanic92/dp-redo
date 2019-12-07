@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="dp-redo",
-    version="3.0.0",
+    version="3.0.1",
     author="Shengqiu Li",
     author_email="lishengqiu.hit@gmail.com",
     description="A python variant of the redo build system, with which You Can (Not) Redo.",
