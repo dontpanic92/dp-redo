@@ -163,7 +163,7 @@ def target_dep(caller, target, target_name):
     if caller != "<module>":
         targets[caller].add_target_dep(target_name)
 
-    target_base_name, _ = os.path.splitext(target_name)
+    target_base_name, _ = os.path.splitext(os.path.basename(target_name))
     target.redo_ifchange(target_name, target_base_name)
 
 def find_target_by_output_name(output_name):
